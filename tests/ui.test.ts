@@ -39,7 +39,7 @@ beforeEach(() => {
   window.location.hash = "";
   root = document.getElementById("app")!;
   state = newState(NOW, 11);
-  settings = { sound: false, vibration: false };
+  settings = { sound: false, vibration: false, tutorialDone: true };
   saves = 0;
   app = createApp(root, state, () => (saves += 1), new Sound(settings), settings);
   refresh();
@@ -93,12 +93,51 @@ describe("interface", () => {
     expect(state.heroes[0]!.level).toBe(11);
   });
 
-  it("opens a chest and shows the result", () => {
+  it("opens a chest with a reveal and closes it", () => {
+    vi.useFakeTimers();
     state.chests = 1;
     refresh();
     byText("Open chest (1)").click();
     expect(state.chests).toBe(0);
-    expect(document.querySelector(".toast")).not.toBeNull();
+    expect(document.querySelector(".box.loot")).not.toBeNull();
+    expect(document.querySelector(".box.loot.revealed")).toBeNull();
+
+    vi.advanceTimersByTime(800);
+    const box = document.querySelector(".box.loot.revealed");
+    expect(box).not.toBeNull();
+    expect(box!.textContent).toMatch(/Common|Uncommon|Rare|Epic|Legendary/);
+    expect(box!.textContent).toMatch(/Equipped by|salvaged/);
+
+    [...box!.querySelectorAll("button")].find((b) => b.textContent === "Continue")!.click();
+    expect(document.querySelector(".modal")).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("shows the party portraits and gear icons", () => {
+    tabButton("Party").click();
+    refresh();
+    expect(root.querySelectorAll("canvas.portrait")).toHaveLength(3);
+    expect(root.querySelectorAll(".slot svg").length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("teaches a new player in three steps, once", () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    root = document.getElementById("app")!;
+    settings = { sound: false, vibration: false, tutorialDone: false };
+    app = createApp(root, state, () => undefined, new Sound(settings), settings);
+    expect(document.querySelector(".tutorial")).not.toBeNull();
+    const next = (): HTMLButtonElement => document.querySelector<HTMLButtonElement>(".tutorial button")!;
+    expect(next().textContent).toBe("Next");
+    next().click();
+    next().click();
+    expect(next().textContent).toBe("Enter the crypt");
+    next().click();
+    expect(document.querySelector(".tutorial")).toBeNull();
+    expect(settings.tutorialDone).toBe(true);
+  });
+
+  it("does not show the tutorial again", () => {
+    expect(document.querySelector(".tutorial")).toBeNull();
   });
 
   it("starts a trial and spends a key", () => {

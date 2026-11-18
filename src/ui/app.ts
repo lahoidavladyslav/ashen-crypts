@@ -33,7 +33,11 @@ import { ACHIEVEMENTS } from "../engine/achievements";
 import { newState } from "../engine/state";
 import { exportSave, parseSave, replaceState } from "../save";
 import { h, modal, toast } from "./dom";
+import { icon } from "./icons";
+import { showLoot } from "./loot";
 import { Scene } from "./scene";
+import { showTutorial } from "./tutorial";
+import { drawSprite } from "./sprites";
 import { saveSettings, type Settings, type Sound } from "./sound";
 
 type TabId = "battle" | "heroes" | "daily" | "ascend" | "records";
@@ -75,7 +79,7 @@ export function createApp(
   const gold = h("div", { class: "coins" });
   const depth = h("div", { class: "depth" });
   const depthSub = h("div", { class: "sub" });
-  root.append(h("header", {}, gold, h("div", {}, depth, depthSub)));
+  root.append(h("header", {}, h("div", { class: "wallet" }, icon("coin", 26), gold), h("div", {}, depth, depthSub)));
 
   const waveFill = h("div");
   const waveTitle = h("div", { class: "title" });
@@ -104,9 +108,8 @@ export function createApp(
     onclick: () => {
       const result = claimChest(state);
       if (!result) return;
-      const where = result.equipped ? "equipped" : `salvaged, +${result.essence} essence`;
-      toast(`${RARITY_NAME[result.item.rarity]} ${result.item.slot}: ${where}`);
       sound.play("chest");
+      showLoot(state, result, () => undefined);
       sound.buzz(result.item.rarity === "legendary" || result.item.rarity === "epic" ? 120 : 30);
     },
   });
@@ -133,6 +136,7 @@ export function createApp(
     skill: HTMLElement;
     buy: HTMLButtonElement;
     slots: Map<Slot, { box: HTMLElement; button: HTMLButtonElement }>;
+    portrait: HTMLCanvasElement;
   }[] = [];
   const heroList = h("div");
   const hireList = h("div");
@@ -157,8 +161,11 @@ export function createApp(
       slots.set(slot.id, { box, button });
       slotRow.append(wrapper);
     }
-    heroList.append(h("div", { class: "card" }, h("div", { class: "row" }, h("div", { class: "grow" }, title, info, skill), buy), slotRow));
-    heroCards.push({ title, info, skill, buy, slots });
+    const portrait = h("canvas", { class: "portrait" });
+    portrait.width = 96;
+    portrait.height = 112;
+    heroList.append(h("div", { class: "card hero-card" }, h("div", { class: "row" }, portrait, h("div", { class: "grow" }, title, info, skill), buy), slotRow));
+    heroCards.push({ title, info, skill, buy, slots, portrait });
   }
 
   const streakCard = h("div", { class: "card" });
@@ -216,7 +223,7 @@ export function createApp(
   const navButtons = TABS.map((item) => {
     const dot = h("span", { class: "dot" });
     dots.set(item.id, dot);
-    return h("button", { text: item.label, onclick: () => (tab = item.id) }, dot);
+    return h("button", { class: "tab", onclick: () => (tab = item.id) }, icon(item.id === "heroes" ? "party" : item.id === "battle" ? "battle" : item.id, 22), h("span", { text: item.label }), dot);
   });
   root.append(h("nav", {}, ...navButtons));
 
@@ -256,7 +263,22 @@ export function createApp(
     });
   }
 
-  function renderHeroes(): void {
+  function drawPortrait(canvas: HTMLCanvasElement, kind: string, now: number): void {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const glow = ctx.createRadialGradient(48, 70, 4, 48, 70, 70);
+    glow.addColorStop(0, "rgba(160,110,230,0.45)");
+    glow.addColorStop(1, "rgba(20,12,30,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.translate(48, 104);
+    ctx.scale(1.35, 1.35);
+    drawSprite(ctx, kind, { t: now / 1000, lunge: 0, flash: 0, cast: 0 });
+  }
+
+  function renderHeroes(now: number): void {
     while (heroCards.length < state.heroes.length) buildHeroCard(heroCards.length);
     qtyButtons.forEach((button, i) => button.classList.toggle("on", ([1, 10, "max"] as const)[i] === quantity));
     state.heroes.forEach((hero, index) => {
@@ -265,6 +287,7 @@ export function createApp(
       const def = classOf(hero.classId);
       const stats = heroStats(state, index);
       card.title.textContent = `${def.name}, level ${hero.level}`;
+      drawPortrait(card.portrait, hero.classId, now);
       card.info.textContent = `${def.role}: ${formatNumber(stats.hp)} hp, ${formatNumber(stats.atk)} atk, ${formatNumber(stats.def)} def`;
       card.skill.textContent = `${def.skillName}: ${def.skillText}`;
       const count = quantity === "max" ? Math.max(1, maxLevels(state, index)) : quantity;
@@ -276,9 +299,10 @@ export function createApp(
         if (!parts) continue;
         const item = hero.gear[slot.id];
         parts.box.className = `slot ${item ? item.rarity : "empty"}`;
-        parts.box.textContent = item
-          ? `${slot.name}: ${RARITY_NAME[item.rarity]} ${formatNumber(itemPower(item))}${item.enhance > 0 ? ` +${item.enhance}` : ""}`
-          : `${slot.name}: empty`;
+        parts.box.replaceChildren(
+          icon(slot.id, 22),
+          h("div", { text: item ? `${RARITY_NAME[item.rarity]} ${formatNumber(itemPower(item))}${item.enhance > 0 ? ` +${item.enhance}` : ""}` : "Empty" }),
+        );
         parts.button.hidden = !item;
         if (item) {
           const full = item.enhance >= ENHANCE_MAX;
@@ -482,7 +506,7 @@ export function createApp(
     for (const item of TABS) panes[item.id].classList.toggle("active", item.id === tab);
     navButtons.forEach((button, index) => button.classList.toggle("on", TABS[index]?.id === tab));
     renderBattle(now);
-    if (tab === "heroes") renderHeroes();
+    if (tab === "heroes") renderHeroes(now);
     if (tab === "daily") renderDaily(now);
     if (tab === "ascend") renderAscend();
     if (tab === "records") renderRecords();
@@ -502,6 +526,13 @@ export function createApp(
     if (report.chests > 0) lines.push(h("div", { class: "sub", text: `${report.chests} chest(s) were waiting.` }));
     if (report.capped) lines.push(h("div", { class: "sub", text: "Offline limit reached. Ancient Lore raises it." }));
     modal("Welcome back", lines, "Continue");
+  }
+
+  if (!settings.tutorialDone) {
+    showTutorial(() => {
+      settings.tutorialDone = true;
+      saveSettings(settings);
+    });
   }
 
   return { update, showOffline };

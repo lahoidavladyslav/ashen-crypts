@@ -106,3 +106,62 @@ nav .dot.show { display: block; }
 .days div.today { outline: 2px solid var(--gold); }
 
 .scene { width: 100%; aspect-ratio: 360 / 290; display: block; border-radius: 14px; margin-bottom: 10px; background: #0b0814; box-shadow: 0 6px 24px #0008; }
+
+/* ---------- visual pass ---------- */
+header { padding: 12px 16px 8px; align-items: center; }
+.wallet { display: flex; align-items: center; gap: 8px; color: var(--gold); }
+.coins { font-family: Georgia, "Times New Roman", serif; letter-spacing: 0.5px; text-shadow: 0 2px 10px #f0b84a55; }
+.depth { font-family: Georgia, "Times New Roman", serif; font-size: 18px; }
+.icon { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+
+.card {
+  background: linear-gradient(180deg, #221829 0%, #181220 100%);
+  border: 1px solid #ffffff12;
+  box-shadow: 0 4px 14px #0006, inset 0 1px 0 #ffffff0d;
+}
+.title { font-family: Georgia, "Times New Roman", serif; letter-spacing: 0.3px; }
+
+button {
+  border: 1px solid #ffffff14;
+  background: linear-gradient(180deg, #34253f, #231a2c);
+  box-shadow: 0 3px 0 #0008, inset 0 1px 0 #ffffff1a;
+  transition: transform 0.08s, filter 0.15s;
+}
+button.primary { background: linear-gradient(180deg, #f0694b, #b8371f); border-color: #ff9a80aa; }
+button.gold { background: linear-gradient(180deg, #ffd36b, #d79a28); border-color: #fff0b0aa; box-shadow: 0 3px 0 #6a4a0a; }
+button.good { background: linear-gradient(180deg, #6fe39d, #2f9e5e); }
+button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #0008; }
+button:disabled { filter: grayscale(0.7); }
+
+nav { background: linear-gradient(180deg, #1d1426, #120c18); }
+nav button.tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 0 8px; background: transparent; border: 0; box-shadow: none; }
+nav button.tab span:not(.icon):not(.dot) { font-size: 11px; }
+nav button.tab.on { color: var(--gold); }
+nav button.tab.on .icon { filter: drop-shadow(0 0 6px #f0b84a99); }
+
+.hero-card .row { align-items: center; }
+.portrait { width: 64px; height: 75px; flex: none; border-radius: 12px; background: #120c18; border: 1px solid #ffffff12; }
+.slot { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; border: 1px solid #ffffff10; }
+.slot.empty { opacity: 0.55; }
+.slot.common { border-color: #b9b2c066; } .slot.uncommon { border-color: #5fd08a88; }
+.slot.rare { border-color: #5aa7ff88; box-shadow: 0 0 10px #5aa7ff33; }
+.slot.epic { border-color: #b46bffaa; box-shadow: 0 0 12px #b46bff44; }
+.slot.legendary { border-color: #ffa73acc; box-shadow: 0 0 16px #ffa73a66; }
+
+.modal .box { border: 1px solid #ffffff18; box-shadow: 0 20px 60px #000a; animation: pop 0.25s ease-out; }
+@keyframes pop { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.box.loot { min-height: 230px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.box.loot.revealed { box-shadow: 0 0 60px color-mix(in srgb, var(--rarity) 55%, transparent), 0 20px 60px #000a; border-color: var(--rarity); }
+.chest-stage { color: var(--gold); filter: drop-shadow(0 0 18px #f0b84a88); margin: 14px 0; }
+.chest-stage.shake { animation: shake 0.18s linear infinite; }
+@keyframes shake { 0% { transform: rotate(-6deg) scale(1.05); } 50% { transform: rotate(6deg) scale(1.1); } 100% { transform: rotate(-6deg) scale(1.05); } }
+.rarity-name { font-family: Georgia, serif; font-size: 22px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+.loot-icon { margin: 6px 0; filter: drop-shadow(0 0 16px currentColor); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.1); } }
+
+.tutorial { text-align: center; }
+.tutorial-icon { color: var(--gold); margin-bottom: 8px; filter: drop-shadow(0 0 12px #f0b84a77); }
+.tutorial .sub { margin: 8px 0 14px; line-height: 1.45; }
+.steps { display: flex; justify-content: center; gap: 6px; margin-bottom: 14px; }
+.step-dot { width: 8px; height: 8px; border-radius: 50%; background: #ffffff25; }
+.step-dot.on { background: var(--gold); }

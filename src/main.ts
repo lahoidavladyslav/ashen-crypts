@@ -19,6 +19,7 @@ function readSave(): string | null {
   }
 }
 
+const settings = loadSettings();
 const startedAt = Date.now();
 const state = deserialize(readSave(), startedAt);
 
@@ -42,13 +43,13 @@ if (import.meta.env.DEV) {
     state.bestDepth = requested;
     for (const hero of state.heroes) hero.level = Math.round(requested * 1.3);
   }
+  if (new URLSearchParams(location.search).get("tutorial") === "0") settings.tutorialDone = true;
   const wave = Number(new URLSearchParams(location.search).get("wave"));
   if (wave > 0) startBattle(state, "stage", wave);
 }
 
 ensureQuests(state, startedAt);
 updateKeys(state, startedAt);
-const settings = loadSettings();
 const app = createApp(root, state, save, new Sound(settings), settings);
 
 function step(): void {
