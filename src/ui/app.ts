@@ -30,9 +30,13 @@ import {
 } from "../engine/progression";
 import type { Fighter, GameState } from "../engine/state";
 import { classOf, heroStats, itemPower, metaLevel, rallyActive, resolveBonus } from "../engine/stats";
+import { ACHIEVEMENTS } from "../engine/achievements";
+import { newState } from "../engine/state";
+import { exportSave, parseSave, replaceState } from "../save";
 import { h, modal, toast } from "./dom";
+import { saveSettings, type Settings, type Sound } from "./sound";
 
-type TabId = "battle" | "heroes" | "daily" | "ascend";
+type TabId = "battle" | "heroes" | "daily" | "ascend" | "records";
 type Quantity = 1 | 10 | "max";
 
 const TABS: readonly { id: TabId; label: string }[] = [
@@ -40,6 +44,7 @@ const TABS: readonly { id: TabId; label: string }[] = [
   { id: "heroes", label: "Party" },
   { id: "daily", label: "Daily" },
   { id: "ascend", label: "Ascend" },
+  { id: "records", label: "Records" },
 ];
 
 const RARITY_NAME = Object.fromEntries(RARITIES.map((entry) => [entry.id, entry.name]));
@@ -76,7 +81,14 @@ function unit(fighter: Fighter, state: GameState, now: number): HTMLElement {
   return element;
 }
 
-export function createApp(root: HTMLElement, state: GameState, save: () => void): App {
+export function createApp(
+  root: HTMLElement,
+  state: GameState,
+  save: () => void,
+  sound: Sound,
+  settings: Settings,
+): App {
+  const seen = { kills: state.stats.kills, bosses: state.stats.bosses, wipes: state.stats.wipes };
   const requested = TABS.find((item) => item.id === location.hash.slice(1));
   let tab: TabId = requested?.id ?? "battle";
   let quantity: Quantity = 1;
@@ -97,7 +109,10 @@ export function createApp(root: HTMLElement, state: GameState, save: () => void)
   const rallyButton = h("button", {
     class: "primary",
     onclick: () => {
-      if (castRally(state, Date.now())) toast("Battle Cry! +50% damage for 10s");
+      if (castRally(state, Date.now())) {
+        toast("Battle Cry! +50% damage for 10s");
+        sound.play("rally");
+      }
     },
   });
   const advanceButton = h("button", {
@@ -112,6 +127,8 @@ export function createApp(root: HTMLElement, state: GameState, save: () => void)
       if (!result) return;
       const where = result.equipped ? "equipped" : `salvaged, +${result.essence} essence`;
       toast(`${RARITY_NAME[result.item.rarity]} ${result.item.slot}: ${where}`);
+      sound.play("chest");
+      sound.buzz(result.item.rarity === "legendary" || result.item.rarity === "epic" ? 120 : 30);
     },
   });
   const trialButton = h("button", {
@@ -146,7 +163,12 @@ export function createApp(root: HTMLElement, state: GameState, save: () => void)
     const title = h("div", { class: "title" });
     const info = h("div", { class: "sub" });
     const skill = h("div", { class: "sub" });
-    const buy = h("button", { class: "primary buy", onclick: () => void buyLevels(state, index, quantity) });
+    const buy = h("button", {
+      class: "primary buy",
+      onclick: () => {
+        if (buyLevels(state, index, quantity) > 0) sound.play("level");
+      },
+    });
     const slots = new Map<Slot, { box: HTMLElement; button: HTMLButtonElement }>();
     const slotRow = h("div", { class: "row", style: "margin-top:10px;align-items:stretch" });
     for (const slot of SLOTS) {
@@ -193,17 +215,23 @@ export function createApp(root: HTMLElement, state: GameState, save: () => void)
     const row = h("div", { class: "card row" }, h("div", { class: "grow" }, h("div", { class: "title", text: def.name }), h("div", { class: "sub", text: def.description }), info), button);
     return { id: def.id, info, button, row };
   });
-  const ascendStats = h("div", { class: "card" });
+  
   const ascendPane = h(
     "section",
     { class: "pane" },
     h("div", { class: "card" }, h("div", { class: "title", text: "Ascension" }), h("div", { class: "sub", text: "Restart for soul shards. Shards buy permanent upgrades." }), ascendGain, ascendInfo, h("div", { style: "height:10px" }), ascendButton),
     ...metaRows.map((row) => row.row),
-    ascendStats,
   );
 
-  const panes: Record<TabId, HTMLElement> = { battle: battlePane, heroes: heroesPane, daily: dailyPane, ascend: ascendPane };
-  root.append(h("main", {}, battlePane, heroesPane, dailyPane, ascendPane));
+  const recordsPane = h("section", { class: "pane" });
+  const panes: Record<TabId, HTMLElement> = {
+    battle: battlePane,
+    heroes: heroesPane,
+    daily: dailyPane,
+    ascend: ascendPane,
+    records: recordsPane,
+  };
+  root.append(h("main", {}, battlePane, heroesPane, dailyPane, ascendPane, recordsPane));
 
   const dots = new Map<TabId, HTMLElement>();
   const navButtons = TABS.map((item) => {
@@ -326,6 +354,7 @@ export function createApp(root: HTMLElement, state: GameState, save: () => void)
               const chest = reward.chests > 0 ? ` and ${reward.chests} chest(s)` : "";
               const shard = reward.shards > 0 ? `, +${reward.shards} shard` : "";
               toast(`Day ${reward.day}: +${formatNumber(reward.gold)} gold${chest}${shard}`);
+              sound.play("claim");
             },
           }),
         );
@@ -364,12 +393,111 @@ export function createApp(root: HTMLElement, state: GameState, save: () => void)
       row.button.replaceChildren("Buy", h("small", { text: `${cost} shard${cost === 1 ? "" : "s"}` }));
       row.button.disabled = state.shards < cost;
     }
-    ascendStats.replaceChildren(
+  }
+
+  const statsCard = h("div", { class: "card" });
+  const achievementList = h("div");
+  const toggleSound = h("button", {
+    onclick: () => {
+      settings.sound = !settings.sound;
+      saveSettings(settings);
+      if (settings.sound) sound.play("claim");
+    },
+  });
+  const toggleVibration = h("button", {
+    onclick: () => {
+      settings.vibration = !settings.vibration;
+      saveSettings(settings);
+      sound.buzz(40);
+    },
+  });
+  const dataButtons = h(
+    "div",
+    { class: "wrap" },
+    h("button", {
+      text: "Export save",
+      onclick: () => {
+        const code = exportSave(state);
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(code).then(
+            () => toast("Save copied to the clipboard"),
+            () => window.prompt("Copy your save code:", code),
+          );
+        } else {
+          window.prompt("Copy your save code:", code);
+        }
+      },
+    }),
+    h("button", {
+      text: "Import save",
+      onclick: () => {
+        const code = window.prompt("Paste your save code:");
+        if (!code) return;
+        const parsed = parseSave(code);
+        if (!parsed) {
+          toast("That code is not a valid save");
+          return;
+        }
+        if (!confirm("Replace the current game with this save?")) return;
+        replaceState(state, parsed, newState(Date.now()));
+        state.lastTick = Date.now();
+        save();
+        toast("Save imported");
+      },
+    }),
+    h("button", {
+      text: "Reset game",
+      onclick: () => {
+        if (!confirm("Delete all progress? This cannot be undone.")) return;
+        const now = Date.now();
+        replaceState(state, newState(now), newState(now));
+        save();
+        toast("Progress reset");
+        tab = "battle";
+      },
+    }),
+  );
+  recordsPane.append(
+    statsCard,
+    h("div", { class: "card" }, h("div", { class: "title", text: "Settings" }), h("div", { style: "height:8px" }), h("div", { class: "wrap" }, toggleSound, toggleVibration), h("div", { style: "height:10px" }), dataButtons),
+    h("div", { class: "title", text: "Achievements", style: "margin:12px 4px 8px" }),
+    achievementList,
+  );
+
+  function renderRecords(): void {
+    statsCard.replaceChildren(
       h("div", { class: "title", text: "Stats" }),
       h("div", { class: "sub", text: `Play time ${formatDuration(state.stats.playSeconds)}, kills ${formatNumber(state.stats.kills)}, bosses ${state.stats.bosses}` }),
       h("div", { class: "sub", text: `Wipes ${state.stats.wipes}, trials won ${state.stats.trialsWon}, lifetime gold ${formatNumber(state.lifetimeGold)}` }),
-      h("div", { class: "sub", text: `Essence ${formatNumber(state.essence)}` }),
+      h("div", { class: "sub", text: `Essence ${formatNumber(state.essence)}. Achievements give +${state.achievements.length}% power and gold.` }),
     );
+    toggleSound.textContent = `Sound: ${settings.sound ? "on" : "off"}`;
+    toggleVibration.textContent = `Vibration: ${settings.vibration ? "on" : "off"}`;
+    sync(achievementList, state.achievements.join(","), () =>
+      ACHIEVEMENTS.map((item) => {
+        const done = state.achievements.includes(item.id);
+        return h("div", { class: "card", style: done ? "" : "opacity:0.45" }, h("div", { class: "title", text: `${done ? "Done: " : ""}${item.name}` }), h("div", { class: "sub", text: item.description }));
+      }),
+    );
+  }
+
+  function react(): void {
+    const stats = state.stats;
+    if (stats.bosses > seen.bosses) {
+      sound.play("boss");
+      sound.buzz(60);
+    } else if (stats.kills > seen.kills) {
+      sound.play("kill");
+    }
+    if (stats.wipes > seen.wipes) sound.play("lose");
+    seen.kills = stats.kills;
+    seen.bosses = stats.bosses;
+    seen.wipes = stats.wipes;
+    for (const id of state.newAchievements.splice(0)) {
+      const found = ACHIEVEMENTS.find((item) => item.id === id);
+      if (found) toast(`Achievement: ${found.name}`);
+      sound.play("claim");
+    }
   }
 
   function update(now: number): void {
@@ -380,6 +508,8 @@ export function createApp(root: HTMLElement, state: GameState, save: () => void)
     if (tab === "heroes") renderHeroes();
     if (tab === "daily") renderDaily(now);
     if (tab === "ascend") renderAscend();
+    if (tab === "records") renderRecords();
+    react();
 
     const claimableQuest = state.quests.items.some((q) => q.progress >= q.target && !q.claimed);
     dots.get("daily")?.classList.toggle("show", canClaimStreak(state, now) || claimableQuest);

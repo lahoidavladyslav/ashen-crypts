@@ -4,6 +4,7 @@ import { ensureQuests, updateKeys } from "./engine/daily";
 import { advance } from "./engine/game";
 import { deserialize, serialize } from "./engine/state";
 import { createApp } from "./ui/app";
+import { Sound, loadSettings } from "./ui/sound";
 
 const SAVE_KEY = "ashen-crypts-save";
 const SAVE_EVERY_MS = 10_000;
@@ -33,7 +34,8 @@ if (!root) throw new Error("missing #app");
 
 ensureQuests(state, startedAt);
 updateKeys(state, startedAt);
-const app = createApp(root, state, save);
+const settings = loadSettings();
+const app = createApp(root, state, save, new Sound(settings), settings);
 
 function step(): void {
   const now = Date.now();
@@ -53,5 +55,5 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("pagehide", save);
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  navigator.serviceWorker.register("./sw.js").catch(() => undefined);
 }

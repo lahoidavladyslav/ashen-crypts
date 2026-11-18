@@ -116,6 +116,8 @@ export const META: readonly MetaDef[] = [
 ];
 export const META_COST_GROWTH = 1.6;
 
+export const ACHIEVEMENT_BONUS = 0.01;
+
 export const KEY_MAX = 3;
 export const KEY_REGEN_SECONDS = 6 * 3600;
 export const TRIAL_POWER = 1.4;

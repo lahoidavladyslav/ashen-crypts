@@ -1,5 +1,6 @@
 import {
   CLASSES,
+  ACHIEVEMENT_BONUS,
   ENHANCE_BONUS,
   ITEM_POWER_DIVISOR,
   LEVEL_MILESTONES,
@@ -55,12 +56,16 @@ export function resolveBonus(state: GameState): number {
   return Math.min(RESOLVE_MAX, state.wipeStreak * RESOLVE_PER_WIPE);
 }
 
+export function achievementBonus(state: GameState): number {
+  return ACHIEVEMENT_BONUS * state.achievements.length;
+}
+
 export function heroStats(state: GameState, index: number): HeroStats {
   const hero = state.heroes[index];
   if (!hero) throw new Error(`no hero at ${index}`);
   const def = classOf(hero.classId);
   const scale = levelScale(hero.level);
-  const resolve = 1 + resolveBonus(state);
+  const resolve = (1 + resolveBonus(state)) * (1 + achievementBonus(state));
   const charm = itemMultiplier(hero.gear.charm) - 1;
   return {
     hp: def.hp * scale * itemMultiplier(hero.gear.armor) * (1 + metaBonus(state, "vitality")) * resolve,
@@ -80,5 +85,5 @@ export function rallyMultiplier(state: GameState, now: number): number {
 }
 
 export function goldMultiplier(state: GameState): number {
-  return 1 + metaBonus(state, "greed");
+  return 1 + metaBonus(state, "greed") + achievementBonus(state);
 }

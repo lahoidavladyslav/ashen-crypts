@@ -10,6 +10,7 @@ import {
 import { startBattle, stepBattle, type BattleHooks } from "./combat";
 import { ensureQuests, recordQuest, updateKeys } from "./daily";
 import { openChest, type EquipResult } from "./loot";
+import { checkAchievements } from "./achievements";
 import { metaBonus } from "./stats";
 import type { GameState } from "./state";
 
@@ -70,6 +71,7 @@ export function applyOffline(state: GameState, now: number): OfflineReport {
   startBattle(state, "stage", 1);
   updateKeys(state, now);
   ensureQuests(state, now);
+  checkAchievements(state);
   return { seconds: elapsed, gold, chests, capped: elapsed > capSeconds };
 }
 
@@ -95,6 +97,7 @@ export function advance(state: GameState, now: number): OfflineReport | null {
   state.lastTick = now;
   updateKeys(state, now);
   ensureQuests(state, now);
+  checkAchievements(state);
   return null;
 }
 

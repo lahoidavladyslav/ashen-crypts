@@ -82,6 +82,8 @@ export interface GameState {
   quests: { day: string; items: Quest[] };
   stats: { kills: number; bosses: number; playSeconds: number; wipes: number; trialsWon: number };
   log: string[];
+  achievements: string[];
+  newAchievements: string[];
 }
 
 export const SAVE_VERSION = 1;
@@ -119,6 +121,8 @@ export function newState(now: number, seed = now): GameState {
     quests: { day: "", items: [] },
     stats: { kills: 0, bosses: 0, playSeconds: 0, wipes: 0, trialsWon: 0 },
     log: [],
+    achievements: [],
+    newAchievements: [],
   };
 }
 
