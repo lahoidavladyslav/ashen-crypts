@@ -34,6 +34,7 @@ import { newState } from "../engine/state";
 import { exportSave, parseSave, replaceState } from "../save";
 import { h, modal, toast } from "./dom";
 import { icon } from "./icons";
+import { Music } from "./music";
 import { showLoot } from "./loot";
 import { Scene } from "./scene";
 import { showTutorial } from "./tutorial";
@@ -71,6 +72,8 @@ export function createApp(
   sound: Sound,
   settings: Settings,
 ): App {
+  const music = new Music(settings);
+  root.addEventListener("pointerdown", () => music.start(), { once: true });
   const seen = { kills: state.stats.kills, bosses: state.stats.bosses, wipes: state.stats.wipes };
   const requested = TABS.find((item) => item.id === location.hash.slice(1));
   let tab: TabId = requested?.id ?? "battle";
@@ -405,6 +408,14 @@ export function createApp(
       if (settings.sound) sound.play("claim");
     },
   });
+  const toggleMusic = h("button", {
+    onclick: () => {
+      settings.music = !settings.music;
+      saveSettings(settings);
+      if (settings.music) music.start();
+      else music.stop();
+    },
+  });
   const toggleVibration = h("button", {
     onclick: () => {
       settings.vibration = !settings.vibration;
@@ -460,7 +471,7 @@ export function createApp(
   );
   recordsPane.append(
     statsCard,
-    h("div", { class: "card" }, h("div", { class: "title", text: "Settings" }), h("div", { style: "height:8px" }), h("div", { class: "wrap" }, toggleSound, toggleVibration), h("div", { style: "height:10px" }), dataButtons),
+    h("div", { class: "card" }, h("div", { class: "title", text: "Settings" }), h("div", { style: "height:8px" }), h("div", { class: "wrap" }, toggleSound, toggleMusic, toggleVibration), h("div", { style: "height:10px" }), dataButtons),
     h("div", { class: "title", text: "Achievements", style: "margin:12px 4px 8px" }),
     achievementList,
   );
@@ -473,6 +484,7 @@ export function createApp(
       h("div", { class: "sub", text: `Essence ${formatNumber(state.essence)}. Achievements give +${state.achievements.length}% power and gold.` }),
     );
     toggleSound.textContent = `Sound: ${settings.sound ? "on" : "off"}`;
+    toggleMusic.textContent = `Music: ${settings.music ? "on" : "off"}`;
     toggleVibration.textContent = `Vibration: ${settings.vibration ? "on" : "off"}`;
     sync(achievementList, state.achievements.join(","), () =>
       ACHIEVEMENTS.map((item) => {
@@ -483,6 +495,7 @@ export function createApp(
   }
 
   function react(): void {
+    music.setIntensity(state.battle?.enemies.some((f) => f.boss) ? 1 : 0);
     const stats = state.stats;
     if (stats.bosses > seen.bosses) {
       sound.play("boss");

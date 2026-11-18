@@ -3,6 +3,7 @@ export type Sfx = "kill" | "boss" | "chest" | "level" | "rally" | "lose" | "clai
 export interface Settings {
   sound: boolean;
   vibration: boolean;
+  music: boolean;
   tutorialDone: boolean;
 }
 
@@ -11,11 +12,11 @@ const SETTINGS_KEY = "ashen-crypts-settings";
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { sound: true, vibration: true, tutorialDone: false, ...(JSON.parse(raw) as Partial<Settings>) };
+    if (raw) return { sound: true, vibration: true, music: true, tutorialDone: false, ...(JSON.parse(raw) as Partial<Settings>) };
   } catch {
     // fall through to defaults
   }
-  return { sound: true, vibration: true, tutorialDone: false };
+  return { sound: true, vibration: true, music: true, tutorialDone: false };
 }
 
 export function saveSettings(settings: Settings): void {

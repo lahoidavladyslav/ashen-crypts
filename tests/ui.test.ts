@@ -39,7 +39,7 @@ beforeEach(() => {
   window.location.hash = "";
   root = document.getElementById("app")!;
   state = newState(NOW, 11);
-  settings = { sound: false, vibration: false, tutorialDone: true };
+  settings = { sound: false, vibration: false, music: false, tutorialDone: true };
   saves = 0;
   app = createApp(root, state, () => (saves += 1), new Sound(settings), settings);
   refresh();
@@ -123,7 +123,7 @@ describe("interface", () => {
   it("teaches a new player in three steps, once", () => {
     document.body.innerHTML = '<div id="app"></div>';
     root = document.getElementById("app")!;
-    settings = { sound: false, vibration: false, tutorialDone: false };
+    settings = { sound: false, vibration: false, music: false, tutorialDone: false };
     app = createApp(root, state, () => undefined, new Sound(settings), settings);
     expect(document.querySelector(".tutorial")).not.toBeNull();
     const next = (): HTMLButtonElement => document.querySelector<HTMLButtonElement>(".tutorial button")!;

@@ -78,7 +78,7 @@ function enemy(
 ): Fighter {
   return {
     id: nextFighterId++,
-    kind: boss ? "boss" : name.toLowerCase().replace(/\s/g, ""),
+    kind: boss ? `boss_${trait ?? "summoner"}` : name.toLowerCase().replace(/\s/g, ""),
     name,
     side: "enemy",
     heroIndex: -1,

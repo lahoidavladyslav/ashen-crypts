@@ -34,6 +34,28 @@ function save(): void {
 const root = document.getElementById("app");
 if (!root) throw new Error("missing #app");
 
+if (import.meta.env.DEV && new URLSearchParams(location.search).has("musictest")) {
+  const { Music } = await import("./ui/music");
+  const music = new Music({ sound: true, vibration: false, music: true, tutorialDone: true });
+  const errors: string[] = [];
+  window.addEventListener("error", (event) => errors.push(event.message));
+  music.start();
+  const started = Date.now();
+  const report = document.createElement("pre");
+  report.style.cssText = "color:#fff;font:20px monospace;padding:20px";
+  root.replaceChildren(report);
+  setInterval(() => {
+    report.textContent = `music playing: ${music.playing}\nelapsed: ${((Date.now() - started) / 1000).toFixed(1)}s\nerrors: ${errors.length ? errors.join("; ") : "none"}`;
+  }, 200);
+  throw new Error("music test mode");
+}
+
+if (import.meta.env.DEV && new URLSearchParams(location.search).has("gallery")) {
+  const { showGallery } = await import("./gallery");
+  showGallery(root);
+  throw new Error("gallery mode");
+}
+
 if (import.meta.env.DEV) {
   // Developer shortcut for looking at deep content: ?depth=31
   const requested = Number(new URLSearchParams(location.search).get("depth"));

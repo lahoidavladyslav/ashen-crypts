@@ -665,6 +665,397 @@ function boss(ctx: Ctx, pose: Pose): void {
   ctx.restore();
 }
 
+function spider(ctx: Ctx, pose: Pose): void {
+  shadow(ctx, 16);
+  ctx.save();
+  ctx.translate(0, bob(pose, 5, 1));
+  ctx.strokeStyle = "#2a1f2e";
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = "round";
+  for (let i = 0; i < 4; i++) {
+    const sway = Math.sin(pose.t * 6 + i) * 3;
+    for (const sign of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(sign * 4, -12);
+      ctx.quadraticCurveTo(sign * (14 + i * 3), -26 + i * 2 + sway, sign * (18 + i * 4), 0);
+      ctx.stroke();
+    }
+  }
+  const body = ctx.createRadialGradient(-2, -14, 2, -2, -14, 14);
+  body.addColorStop(0, "#5a3a66");
+  body.addColorStop(1, "#1d1224");
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.ellipse(-6, -12, 11, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(8, -13, 7, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#c9302c";
+  ctx.fillRect(-9, -15, 3, 4);
+  eyes(ctx, 10, -15, 2, "#ff4a4a", 1.2);
+  ctx.restore();
+}
+
+function imp(ctx: Ctx, pose: Pose): void {
+  shadow(ctx, 11);
+  const hover = Math.sin(pose.t * 5) * 3;
+  ctx.save();
+  ctx.translate(0, -6 + hover);
+  const flap = Math.sin(pose.t * 14) * 0.5;
+  ctx.fillStyle = "#6a1a26";
+  for (const sign of [-1, 1]) {
+    ctx.save();
+    ctx.scale(sign, 1);
+    ctx.translate(5, -26);
+    ctx.rotate(-0.5 + flap);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(14, -16, 22, -2);
+    ctx.quadraticCurveTo(14, 2, 8, 8);
+    ctx.quadraticCurveTo(10, 2, 0, 6);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.fillStyle = "#c2392b";
+  ctx.beginPath();
+  ctx.ellipse(0, -20, 8, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(1, -36, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#2a0a0a";
+  for (const sign of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(sign * 3, -41);
+    ctx.lineTo(sign * 7, -50);
+    ctx.lineTo(sign * 6, -40);
+    ctx.fill();
+  }
+  eyes(ctx, 3, -37, 2.6, "#ffe05a", 1.4);
+  ctx.strokeStyle = "#c2392b";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-6, -12);
+  ctx.quadraticCurveTo(-18, -8, -14, 4);
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(9, -22);
+  ctx.rotate(-0.3 + pose.lunge * 1.6);
+  ctx.strokeStyle = "#8a8f9a";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 6);
+  ctx.lineTo(0, -22);
+  ctx.moveTo(-4, -18);
+  ctx.lineTo(-4, -26);
+  ctx.moveTo(4, -18);
+  ctx.lineTo(4, -26);
+  ctx.moveTo(-4, -18);
+  ctx.lineTo(4, -18);
+  ctx.stroke();
+  ctx.restore();
+  ctx.restore();
+}
+
+function stoneGolem(ctx: Ctx, pose: Pose): void {
+  shadow(ctx, 20);
+  const y = bob(pose, 1.6, 1.4);
+  ctx.save();
+  ctx.translate(0, y);
+  const rock = ctx.createLinearGradient(-16, -52, 16, -6);
+  rock.addColorStop(0, "#8a8f9a");
+  rock.addColorStop(1, "#3c4048");
+  ctx.fillStyle = rock;
+  roundRect(ctx, -10, -18, 8, 18, 3);
+  ctx.fill();
+  roundRect(ctx, 3, -18, 8, 18, 3);
+  ctx.fill();
+  roundRect(ctx, -16, -52, 32, 38, 7);
+  ctx.fill();
+  roundRect(ctx, -7, -66, 16, 15, 5);
+  ctx.fill();
+  const pulse = 0.6 + Math.sin(pose.t * 3) * 0.3;
+  ctx.strokeStyle = `rgba(120,230,255,${pulse})`;
+  ctx.lineWidth = 1.6;
+  ctx.shadowColor = "#7ee6ff";
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.moveTo(-8, -44);
+  ctx.lineTo(-2, -36);
+  ctx.lineTo(-9, -28);
+  ctx.moveTo(8, -46);
+  ctx.lineTo(3, -34);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  eyes(ctx, 2, -59, 3, "#7ee6ff", 1.6);
+  ctx.fillStyle = "#6a6f7a";
+  ctx.save();
+  ctx.translate(16, -40);
+  ctx.rotate(-0.2 + pose.lunge * 1.6);
+  roundRect(ctx, -3, -4, 9, 28, 4);
+  ctx.fill();
+  roundRect(ctx, -5, 18, 13, 12, 5);
+  ctx.fill();
+  ctx.restore();
+  roundRect(ctx, -26, -42, 9, 26, 4);
+  ctx.fill();
+  ctx.restore();
+}
+
+function bossArmored(ctx: Ctx, pose: Pose): void {
+  shadow(ctx, 22);
+  const y = bob(pose, 1.8, 1.5);
+  ctx.save();
+  ctx.translate(0, y);
+  ctx.fillStyle = "#23262e";
+  roundRect(ctx, -12, -18, 9, 18, 3);
+  ctx.fill();
+  roundRect(ctx, 3, -18, 9, 18, 3);
+  ctx.fill();
+  const plate = ctx.createLinearGradient(-16, -56, 16, -16);
+  plate.addColorStop(0, "#7a8190");
+  plate.addColorStop(1, "#262a33");
+  ctx.fillStyle = plate;
+  roundRect(ctx, -16, -56, 32, 40, 7);
+  ctx.fill();
+  ctx.fillStyle = "#c9a14a";
+  ctx.fillRect(-16, -38, 32, 3);
+  for (const sign of [-1, 1]) {
+    ctx.fillStyle = "#3a3f4a";
+    roundRect(ctx, sign * 20 - 8, -60, 16, 14, 5);
+    ctx.fill();
+    ctx.fillStyle = "#c9c9d2";
+    ctx.beginPath();
+    ctx.moveTo(sign * 20 - 3, -60);
+    ctx.lineTo(sign * 20, -72);
+    ctx.lineTo(sign * 20 + 3, -60);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#4a505c";
+  ctx.beginPath();
+  ctx.arc(0, -66, 11, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#14161b";
+  roundRect(ctx, -9, -69, 20, 5, 2);
+  ctx.fill();
+  eyes(ctx, 1, -66.5, 4, "#ff6a3a", 1.6);
+  ctx.fillStyle = "#c9c9d2";
+  for (const sign of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(sign * 9, -72);
+    ctx.quadraticCurveTo(sign * 20, -76, sign * 16, -90);
+    ctx.quadraticCurveTo(sign * 12, -80, sign * 7, -74);
+    ctx.fill();
+  }
+  ctx.save();
+  ctx.translate(20, -34);
+  ctx.rotate(-0.1 + pose.lunge * 0.5);
+  ctx.fillStyle = "#505665";
+  ctx.beginPath();
+  ctx.moveTo(-6, -26);
+  ctx.lineTo(14, -26);
+  ctx.lineTo(14, 8);
+  ctx.quadraticCurveTo(14, 26, 4, 34);
+  ctx.quadraticCurveTo(-6, 26, -6, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#c9a14a";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  skullHead(ctx, 4, -2, 6, "#e8e2cf");
+  ctx.restore();
+  ctx.save();
+  ctx.translate(-20, -40);
+  ctx.rotate(-0.6 + pose.lunge * 1.8);
+  ctx.fillStyle = "#6b4a2b";
+  ctx.fillRect(-2, -8, 4, 40);
+  ctx.fillStyle = "#8a8f9a";
+  ctx.beginPath();
+  ctx.arc(0, -14, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.restore();
+}
+
+function bossRegen(ctx: Ctx, pose: Pose): void {
+  const float = Math.sin(pose.t * 1.8) * 4;
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 20, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(0, -8 + float);
+  const gown = ctx.createLinearGradient(0, -70, 0, 18);
+  gown.addColorStop(0, "rgba(232,238,232,0.98)");
+  gown.addColorStop(1, "rgba(120,170,140,0)");
+  ctx.fillStyle = gown;
+  ctx.beginPath();
+  ctx.moveTo(-14, -52);
+  ctx.quadraticCurveTo(0, -62, 14, -52);
+  ctx.lineTo(24, 14);
+  for (let i = 0; i < 5; i++) {
+    ctx.lineTo(24 - i * 10 - 5, 20 + Math.sin(pose.t * 3 + i) * 4);
+    ctx.lineTo(24 - i * 10 - 10, 10);
+  }
+  ctx.lineTo(-14, -52);
+  ctx.fill();
+  ctx.fillStyle = "#0e1612";
+  for (const sign of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(sign * 7, -68);
+    ctx.quadraticCurveTo(sign * 22, -58 + Math.sin(pose.t * 2) * 3, sign * 18, -20);
+    ctx.quadraticCurveTo(sign * 12, -44, sign * 6, -52);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#d8dfd4";
+  ctx.beginPath();
+  ctx.ellipse(0, -62, 8.5, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#0c1410";
+  ctx.beginPath();
+  ctx.ellipse(-3, -63, 2.4, 3.6, 0, 0, Math.PI * 2);
+  ctx.ellipse(3, -63, 2.4, 3.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  eyes(ctx, 0, -63, 3, "#7dffa5", 1.2);
+  ctx.strokeStyle = "rgba(210,226,214,0.95)";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  for (const sign of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(sign * 12, -46);
+    ctx.lineTo(sign * (26 + (sign > 0 ? pose.lunge * 10 : 0)), -34);
+    ctx.stroke();
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(sign * (26 + (sign > 0 ? pose.lunge * 10 : 0)), -34);
+      ctx.lineTo(sign * (33 + (sign > 0 ? pose.lunge * 10 : 0)), -33 + i * 3);
+      ctx.stroke();
+    }
+  }
+  for (let i = 0; i < 4; i++) {
+    glow(ctx, Math.sin(pose.t * 2 + i * 1.7) * 22, -30 + Math.cos(pose.t * 1.5 + i) * 18, 8, "#7dffa5", 0.5);
+  }
+  ctx.restore();
+}
+
+function bossEnrage(ctx: Ctx, pose: Pose): void {
+  shadow(ctx, 22);
+  const y = bob(pose, 2.4, 1.8);
+  ctx.save();
+  ctx.translate(0, y);
+  ctx.fillStyle = "#2a0c10";
+  roundRect(ctx, -12, -20, 9, 20, 3);
+  ctx.fill();
+  roundRect(ctx, 3, -20, 9, 20, 3);
+  ctx.fill();
+  const flesh = ctx.createLinearGradient(-16, -58, 16, -18);
+  flesh.addColorStop(0, "#d6452e");
+  flesh.addColorStop(1, "#4a0e10");
+  ctx.fillStyle = flesh;
+  roundRect(ctx, -17, -58, 34, 42, 9);
+  ctx.fill();
+  ctx.strokeStyle = "#ffae42";
+  ctx.lineWidth = 1.6;
+  ctx.globalAlpha = 0.5 + Math.sin(pose.t * 6) * 0.25;
+  ctx.beginPath();
+  ctx.moveTo(-9, -50);
+  ctx.lineTo(-3, -38);
+  ctx.lineTo(-10, -28);
+  ctx.moveTo(9, -52);
+  ctx.lineTo(4, -40);
+  ctx.lineTo(11, -30);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  for (let i = 0; i < 7; i++) {
+    const flicker = Math.sin(pose.t * 9 + i * 1.3) * 5;
+    ctx.fillStyle = i % 2 ? "#ffae42" : "#ff5a2a";
+    ctx.beginPath();
+    ctx.moveTo(-14 + i * 4.5, -70);
+    ctx.quadraticCurveTo(-16 + i * 4.5, -84 - flicker, -12 + i * 4.5, -92 - flicker * 1.4);
+    ctx.quadraticCurveTo(-8 + i * 4.5, -82 - flicker, -9 + i * 4.5, -70);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#b8321f";
+  ctx.beginPath();
+  ctx.arc(0, -66, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#1a0505";
+  for (const sign of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(sign * 7, -74);
+    ctx.quadraticCurveTo(sign * 22, -80, sign * 20, -98);
+    ctx.quadraticCurveTo(sign * 12, -86, sign * 5, -75);
+    ctx.fill();
+  }
+  eyes(ctx, 1, -67, 4.4, "#fff06a", 2);
+  ctx.fillStyle = "#14080a";
+  ctx.beginPath();
+  ctx.moveTo(-5, -60);
+  ctx.lineTo(7, -60);
+  ctx.lineTo(1, -55);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(-22, -42);
+  ctx.rotate(-0.5 + pose.lunge * 1.9);
+  glow(ctx, 0, -28, 26, "#ff6a2a", 0.7);
+  ctx.fillStyle = "#ffcf8a";
+  ctx.beginPath();
+  ctx.moveTo(-3, -6);
+  ctx.lineTo(0, -58);
+  ctx.lineTo(3, -6);
+  ctx.fill();
+  ctx.fillStyle = "#3a1a10";
+  ctx.fillRect(-8, -6, 16, 4);
+  ctx.restore();
+  ctx.restore();
+}
+
+function bossThick(ctx: Ctx, pose: Pose): void {
+  shadow(ctx, 28);
+  const y = bob(pose, 1.3, 2);
+  ctx.save();
+  ctx.translate(0, y);
+  const bone = ctx.createLinearGradient(-24, -60, 24, 0);
+  bone.addColorStop(0, "#efe8d2");
+  bone.addColorStop(1, "#8a8470");
+  ctx.fillStyle = "#8a8470";
+  roundRect(ctx, -18, -22, 13, 22, 4);
+  ctx.fill();
+  roundRect(ctx, 5, -22, 13, 22, 4);
+  ctx.fill();
+  ctx.fillStyle = bone;
+  roundRect(ctx, -24, -62, 48, 46, 12);
+  ctx.fill();
+  ctx.strokeStyle = "#5a5440";
+  ctx.lineWidth = 2.4;
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-18, -54 + i * 9);
+    ctx.quadraticCurveTo(0, -48 + i * 9, 18, -54 + i * 9);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(0, -62);
+  ctx.lineTo(0, -16);
+  ctx.stroke();
+  skullHead(ctx, 0, -72, 10, "#efe8d2");
+  eyes(ctx, 0, -73, 4, "#ffcf3a", 2);
+  for (const sign of [-1, 1]) {
+    ctx.save();
+    ctx.translate(sign * 30, -48);
+    ctx.rotate(sign > 0 ? -0.3 + pose.lunge * 1.8 : 0.2);
+    ctx.fillStyle = bone;
+    roundRect(ctx, -7, -6, 14, 30, 6);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 28, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 const SPRITES: Record<string, (ctx: Ctx, pose: Pose) => void> = {
   knight,
   pyromancer,
@@ -678,7 +1069,14 @@ const SPRITES: Record<string, (ctx: Ctx, pose: Pose) => void> = {
   boneknight: boneKnight,
   plaguerat: plagueRat,
   shade,
-  boss,
+  giantspider: spider,
+  imp,
+  stonegolem: stoneGolem,
+  boss_summoner: boss,
+  boss_armored: bossArmored,
+  boss_regen: bossRegen,
+  boss_enrage: bossEnrage,
+  boss_thick: bossThick,
 };
 
 export function drawSprite(ctx: Ctx, kind: string, pose: Pose): void {

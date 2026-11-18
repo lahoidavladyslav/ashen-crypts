@@ -146,7 +146,7 @@ export function enemyDef(depth: number): number {
   return 2 + depth * 0.6;
 }
 
-const ENEMY_NAMES = ["Skeleton", "Ghoul", "Cultist", "Wraith", "Bone Knight", "Plague Rat", "Shade"];
+const ENEMY_NAMES = ["Skeleton", "Ghoul", "Cultist", "Wraith", "Bone Knight", "Plague Rat", "Shade", "Giant Spider", "Imp", "Stone Golem"];
 const BOSS_NAMES = ["Gravewarden", "The Pale Matron", "Lord Cinder", "Hollow King", "Marrow Colossus"];
 
 export function enemyName(depth: number, index: number): string {

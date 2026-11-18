@@ -426,13 +426,14 @@ export class Scene {
   private drawUnit(ctx: CanvasRenderingContext2D, v: Visual): void {
     const scale = v.boss ? 1.6 : 1;
     const dir = v.side === "hero" ? 1 : -1;
-    const alpha = v.dead ? (v.side === "enemy" ? Math.max(0, 1 - v.deathT / 0.7) : 0.35) : Math.min(1, v.appear * 1.4);
+    const alpha = v.dead ? (v.side === "enemy" ? Math.max(0, 1 - Math.max(0, v.deathT - 0.25) / 0.45) : 0.4) : Math.min(1, v.appear * 1.4);
     if (alpha <= 0) return;
 
     ctx.save();
     ctx.globalAlpha = alpha;
     const lungeOffset = Math.sin(Math.min(1, v.lunge) * Math.PI) * 16 * dir;
-    ctx.translate(v.x + lungeOffset, v.y + (v.dead && v.side === "enemy" ? v.deathT * 14 : 0));
+    const knockback = -dir * v.flash * 5;
+    ctx.translate(v.x + lungeOffset + knockback, v.y);
 
     if (v.boss && v.trait) this.drawAura(ctx, v.trait);
     if (v.shield) {
@@ -454,7 +455,7 @@ export class Scene {
 
     ctx.scale(dir * scale, scale);
     const pose = { t: this.clock + v.phase, lunge: Math.sin(Math.min(1, v.lunge) * Math.PI), flash: v.flash, cast: v.cast };
-    if (v.dead && v.side === "hero") ctx.rotate(-0.12);
+    if (v.dead) ctx.rotate(-Math.min(1, v.side === "enemy" ? v.deathT / 0.3 : 1) * 1.35);
     if (pose.flash > 0.02) this.drawFlashed(ctx, v.kind, pose);
     else drawSprite(ctx, v.kind, pose);
     ctx.restore();
