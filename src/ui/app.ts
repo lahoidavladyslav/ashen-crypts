@@ -6,7 +6,6 @@ import {
   RARITIES,
   SLOTS,
   STREAK_REWARDS,
-  TRAITS,
   WAVES_PER_DEPTH,
   ENHANCE_MAX,
   type Slot,
@@ -28,12 +27,13 @@ import {
   maxLevels,
   metaCost,
 } from "../engine/progression";
-import type { Fighter, GameState } from "../engine/state";
+import type { GameState } from "../engine/state";
 import { classOf, heroStats, itemPower, metaLevel, rallyActive, resolveBonus } from "../engine/stats";
 import { ACHIEVEMENTS } from "../engine/achievements";
 import { newState } from "../engine/state";
 import { exportSave, parseSave, replaceState } from "../save";
 import { h, modal, toast } from "./dom";
+import { Scene } from "./scene";
 import { saveSettings, type Settings, type Sound } from "./sound";
 
 type TabId = "battle" | "heroes" | "daily" | "ascend" | "records";
@@ -60,27 +60,6 @@ function sync(container: HTMLElement, signature: string, build: () => Node[]): v
   container.replaceChildren(...build());
 }
 
-function unit(fighter: Fighter, state: GameState, now: number): HTMLElement {
-  const dead = fighter.hp <= 0;
-  const element = h("div", { class: `unit ${fighter.side === "enemy" ? "enemy" : ""} ${fighter.boss ? "boss" : ""} ${dead ? "dead" : ""}` });
-  element.append(h("div", { class: "name", text: fighter.name }));
-  if (fighter.trait) element.append(h("div", { class: "sub", text: TRAITS[fighter.trait].name }));
-  element.append(h("div", { class: "sub", text: `${formatNumber(Math.max(0, fighter.hp))}` }));
-  const hp = h("div", { class: "bar" }, h("div"));
-  (hp.firstChild as HTMLElement).style.width = `${Math.max(0, (fighter.hp / fighter.maxHp) * 100)}%`;
-  element.append(hp);
-  if (fighter.side === "hero") {
-    const hero = state.heroes[fighter.heroIndex];
-    const total = hero ? classOf(hero.classId).skillCooldown : 10;
-    const skill = h("div", { class: "bar skill" }, h("div"));
-    (skill.firstChild as HTMLElement).style.width = `${(1 - fighter.skillCd / total) * 100}%`;
-    element.append(skill);
-    if (fighter.shieldUntil > (state.battle?.clock ?? 0)) element.style.outline = "1px solid var(--rare)";
-  }
-  void now;
-  return element;
-}
-
 export function createApp(
   root: HTMLElement,
   state: GameState,
@@ -102,9 +81,9 @@ export function createApp(
   const waveTitle = h("div", { class: "title" });
   const resolveTag = h("span", { class: "tag resolve" });
   const waveCard = h("div", { class: "card" }, h("div", {}, waveTitle, resolveTag), h("div", { class: "bar wave" }, waveFill));
-  const enemyLine = h("div", { class: "line" });
-  const heroLine = h("div", { class: "line" });
-  const arena = h("div", { class: "arena" }, enemyLine, heroLine);
+  const canvas = h("canvas", { class: "scene" });
+  const scene = new Scene(canvas);
+  scene.start();
 
   const rallyButton = h("button", {
     class: "primary",
@@ -138,7 +117,7 @@ export function createApp(
   });
   const actions = h("div", { class: "wrap" }, rallyButton, chestButton, trialButton, advanceButton);
   const feed = h("div", { class: "card feed" });
-  const battlePane = h("section", { class: "pane" }, waveCard, arena, actions, h("div", { style: "height:10px" }), feed);
+  const battlePane = h("section", { class: "pane" }, waveCard, canvas, actions, h("div", { style: "height:10px" }), feed);
 
   const qtyButtons = ([1, 10, "max"] as const).map((value) =>
     h("button", {
@@ -252,9 +231,7 @@ export function createApp(
     const resolve = resolveBonus(state);
     resolveTag.style.display = resolve > 0 ? "inline-block" : "none";
     resolveTag.textContent = `Resolve +${Math.round(resolve * 100)}%`;
-    enemyLine.replaceChildren(...battle.enemies.map((f) => unit(f, state, now)));
-    if (battle.enemies.length === 0) enemyLine.replaceChildren(h("div", { class: "empty", text: "..." }));
-    heroLine.replaceChildren(...battle.heroes.map((f) => unit(f, state, now)));
+    scene.update(state, now);
 
     const rallyLeft = Math.ceil((state.rally.readyAt - now) / 1000);
     rallyButton.disabled = !rallyReady(state, now);

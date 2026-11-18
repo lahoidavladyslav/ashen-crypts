@@ -46,9 +46,9 @@ beforeEach(() => {
 });
 
 describe("interface", () => {
-  it("shows gold, depth and the party fighting", () => {
+  it("shows gold, depth and the battle scene", () => {
     expect(root.textContent).toContain("Depth 1");
-    expect(root.querySelectorAll(".unit").length).toBeGreaterThanOrEqual(4);
+    expect(root.querySelector("canvas.scene")).not.toBeNull();
   });
 
   it("switches between the five tabs", () => {

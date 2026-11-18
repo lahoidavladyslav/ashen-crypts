@@ -104,3 +104,5 @@ nav .dot.show { display: block; }
 .days div { flex: 1; text-align: center; padding: 8px 0; border-radius: 8px; background: var(--panel-2); font-size: 12px; color: var(--muted); }
 .days div.done { background: var(--good); color: #062414; font-weight: 700; }
 .days div.today { outline: 2px solid var(--gold); }
+
+.scene { width: 100%; aspect-ratio: 360 / 290; display: block; border-radius: 14px; margin-bottom: 10px; background: #0b0814; box-shadow: 0 6px 24px #0008; }

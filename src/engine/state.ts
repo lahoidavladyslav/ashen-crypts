@@ -16,7 +16,9 @@ export interface HeroState {
 }
 
 export interface Fighter {
+  id: number;
   name: string;
+  kind: string;
   side: "hero" | "enemy";
   heroIndex: number;
   boss: boolean;
@@ -34,7 +36,18 @@ export interface Fighter {
   summoned: boolean;
 }
 
+export type BattleEvent =
+  | { type: "hit"; from: number; to: number; amount: number; crit: boolean; skill?: string }
+  | { type: "heal"; to: number; amount: number }
+  | { type: "skill"; from: number; skill: string }
+  | { type: "death"; id: number; boss: boolean }
+  | { type: "summon"; id: number }
+  | { type: "wave"; wave: number; boss: boolean }
+  | { type: "wipe" }
+  | { type: "clear"; depth: number; chest: boolean };
+
 export interface Battle {
+  events: BattleEvent[];
   kind: "stage" | "trial";
   depth: number;
   power: number;
@@ -76,6 +89,7 @@ export interface GameState {
   chests: number;
   chestPity: number;
   nextItemId: number;
+  nextFighterId: number;
   farm: { goldPerSecond: number; windowGold: number; windowSeconds: number };
   keys: { count: number; nextAt: number };
   streak: { count: number; lastClaimDay: string | null; shields: number };
@@ -115,6 +129,7 @@ export function newState(now: number, seed = now): GameState {
     chests: 0,
     chestPity: 0,
     nextItemId: 1,
+    nextFighterId: 1,
     farm: { goldPerSecond: 0, windowGold: 0, windowSeconds: 0 },
     keys: { count: KEY_MAX, nextAt: 0 },
     streak: { count: 0, lastClaimDay: null, shields: 0 },

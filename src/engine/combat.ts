@@ -25,7 +25,7 @@ import { dropChance, equipOrSalvage, rollItem } from "./loot";
 import { nextFloat } from "./rng";
 import { classOf, goldMultiplier, heroStats, rallyMultiplier } from "./stats";
 import type { Trait } from "./config";
-import type { Battle, Fighter, GameState } from "./state";
+import type { Battle, BattleEvent, Fighter, GameState } from "./state";
 
 export interface BattleHooks {
   onKill: (state: GameState, boss: boolean) => void;
@@ -33,10 +33,21 @@ export interface BattleHooks {
   onGold: (state: GameState, amount: number) => void;
 }
 
+let nextFighterId = 1;
+
+function emit(state: GameState, event: BattleEvent): void {
+  const events = state.battle?.events;
+  if (!events) return;
+  events.push(event);
+  if (events.length > 240) events.splice(0, events.length - 240);
+}
+
 function fighterFromStats(state: GameState, index: number): Fighter {
   const stats = heroStats(state, index);
   const hero = state.heroes[index];
   return {
+    id: nextFighterId++,
+    kind: hero?.classId ?? "knight",
     name: hero ? classOf(hero.classId).name : "Hero",
     side: "hero",
     heroIndex: index,
@@ -66,6 +77,8 @@ function enemy(
   summoned = false,
 ): Fighter {
   return {
+    id: nextFighterId++,
+    kind: boss ? "boss" : name.toLowerCase().replace(/\s/g, ""),
     name,
     side: "enemy",
     heroIndex: -1,
@@ -120,7 +133,8 @@ export function startBattle(state: GameState, kind: "stage" | "trial", wave = 1)
       : spawnEnemies(state.depth, wave);
   const depth = kind === "trial" ? state.maxDepth : state.depth;
   const power = kind === "trial" ? TRIAL_POWER : 1;
-  state.battle = { kind, depth, power, wave, clock: 0, waveTime: 0, delay: 0, heroes, enemies };
+  state.battle = { events: [], kind, depth, power, wave, clock: 0, waveTime: 0, delay: 0, heroes, enemies };
+  emit(state, { type: "wave", wave, boss: wave >= WAVES_PER_DEPTH });
 }
 
 export function refreshHeroStats(state: GameState): void {
@@ -145,13 +159,25 @@ function alive(list: Fighter[]): Fighter[] {
   return list.filter((fighter) => fighter.hp > 0);
 }
 
-function damage(state: GameState, from: Fighter, to: Fighter, multiplier: number, now: number, forceCrit = false): number {
+function damage(
+  state: GameState,
+  from: Fighter,
+  to: Fighter,
+  multiplier: number,
+  now: number,
+  forceCrit = false,
+  skill?: string,
+): number {
   let amount = from.atk * enrageFactor(from) * multiplier * (100 / (100 + to.def));
   if (from.side === "enemy") amount *= softEnrage(state.battle);
-  if (forceCrit || nextFloat(state) < from.crit) amount *= CRIT_MULTIPLIER;
+  const crit = forceCrit || nextFloat(state) < from.crit;
+  if (crit) amount *= CRIT_MULTIPLIER;
   if (from.side === "hero") amount *= rallyMultiplier(state, now);
   if (to.side === "hero" && to.shieldUntil > (state.battle?.clock ?? 0)) amount *= 0.5;
+  const wasAlive = to.hp > 0;
   to.hp = Math.max(0, to.hp - amount);
+  emit(state, { type: "hit", from: from.id, to: to.id, amount, crit, skill });
+  if (wasAlive && to.hp <= 0) emit(state, { type: "death", id: to.id, boss: to.boss });
   return amount;
 }
 
@@ -170,6 +196,12 @@ function softEnrage(battle: Battle | null): number {
 
 function heal(target: Fighter, amount: number): void {
   target.hp = Math.min(target.maxHp, target.hp + amount);
+}
+
+function healWithEvent(state: GameState, target: Fighter, amount: number): void {
+  const before = target.hp;
+  heal(target, amount);
+  if (target.hp > before) emit(state, { type: "heal", to: target.id, amount: target.hp - before });
 }
 
 function pickEnemyTarget(state: GameState, heroes: Fighter[], clock: number): Fighter | undefined {
@@ -191,28 +223,29 @@ function castSkill(state: GameState, battle: Battle, caster: Fighter, now: numbe
   const def = classOf(hero.classId);
   const foes = alive(battle.enemies);
   const friends = alive(battle.heroes);
+  emit(state, { type: "skill", from: caster.id, skill: def.skill });
   switch (def.skill) {
     case "shieldWall":
       caster.shieldUntil = battle.clock + 5;
       break;
     case "fireball":
       if (foes.length === 0) return false;
-      for (const foe of foes) damage(state, caster, foe, 2.5, now);
+      for (const foe of foes) damage(state, caster, foe, 2.5, now, false, def.skill);
       break;
     case "prayer":
       if (!friends.some((f) => f.hp < f.maxHp * 0.9)) return false;
-      for (const friend of friends) heal(friend, caster.atk * 2.5);
+      for (const friend of friends) healWithEvent(state, friend, caster.atk * 2.5);
       break;
     case "backstab": {
       const target = foes.reduce<Fighter | undefined>((best, f) => (!best || f.hp > best.hp ? f : best), undefined);
       if (!target) return false;
-      damage(state, caster, target, 4, now, true);
+      damage(state, caster, target, 4, now, true, def.skill);
       break;
     }
     case "drain": {
       const target = foes[0];
       if (!target) return false;
-      heal(caster, damage(state, caster, target, 3, now));
+      healWithEvent(state, caster, damage(state, caster, target, 3, now, false, def.skill));
       break;
     }
   }
@@ -232,7 +265,7 @@ function heroAct(state: GameState, battle: Battle, hero: Fighter, now: number): 
       undefined,
     );
     if (hurt && hurt.hp < hurt.maxHp) {
-      heal(hurt, hero.atk * 1.2);
+      healWithEvent(state, hurt, hero.atk * 1.2);
       return;
     }
   }
@@ -257,7 +290,11 @@ function runTraits(battle: Battle, dt: number): void {
       foe.traitTimer -= SUMMON_SECONDS;
       if (alive(battle.enemies).length < SUMMON_CAP) {
         const minion = spawnEnemies(battle.depth, 1, battle.power)[0];
-        if (minion) battle.enemies.push({ ...minion, name: "Summoned Shade", summoned: true });
+        if (minion) {
+          const spawned = { ...minion, name: "Summoned Shade", kind: "shade", summoned: true };
+          battle.enemies.push(spawned);
+          battle.events.push({ type: "summon", id: spawned.id });
+        }
       }
     }
   }
@@ -316,6 +353,7 @@ export function stepBattle(state: GameState, seconds: number, now: number, hooks
 
     if (alive(battle.heroes).length === 0) {
       state.stats.wipes += 1;
+      battle.events.push({ type: "wipe" });
       if (battle.kind === "trial") {
         trial = { won: false };
         startBattle(state, "stage", 1);
@@ -343,6 +381,7 @@ export function stepBattle(state: GameState, seconds: number, now: number, hooks
       if (battle.wave >= WAVES_PER_DEPTH) {
         state.wipeStreak = 0;
         hooks.onChest(state);
+        battle.events.push({ type: "clear", depth: state.depth, chest: true });
         state.maxDepth = Math.max(state.maxDepth, state.depth);
         state.bestDepth = Math.max(state.bestDepth, state.depth);
         if (state.autoAdvance) state.depth += 1;
@@ -354,6 +393,7 @@ export function stepBattle(state: GameState, seconds: number, now: number, hooks
       battle.depth = state.depth;
       battle.waveTime = 0;
       battle.enemies = spawnEnemies(state.depth, battle.wave);
+      battle.events.push({ type: "wave", wave: battle.wave, boss: battle.wave >= WAVES_PER_DEPTH });
     }
   }
   return trial;
