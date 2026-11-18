@@ -1,0 +1,57 @@
+import "./style.css";
+import { OFFLINE_THRESHOLD_SECONDS } from "./engine/config";
+import { ensureQuests, updateKeys } from "./engine/daily";
+import { advance } from "./engine/game";
+import { deserialize, serialize } from "./engine/state";
+import { createApp } from "./ui/app";
+
+const SAVE_KEY = "ashen-crypts-save";
+const SAVE_EVERY_MS = 10_000;
+const FRAME_MS = 200;
+
+function readSave(): string | null {
+  try {
+    return localStorage.getItem(SAVE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+const startedAt = Date.now();
+const state = deserialize(readSave(), startedAt);
+
+function save(): void {
+  try {
+    localStorage.setItem(SAVE_KEY, serialize(state));
+  } catch {
+    // storage can be full or blocked; the game keeps running without saving
+  }
+}
+
+const root = document.getElementById("app");
+if (!root) throw new Error("missing #app");
+
+ensureQuests(state, startedAt);
+updateKeys(state, startedAt);
+const app = createApp(root, state, save);
+
+function step(): void {
+  const now = Date.now();
+  const report = advance(state, now);
+  if (report && report.seconds > OFFLINE_THRESHOLD_SECONDS) app.showOffline(report);
+  app.update(now);
+}
+
+step();
+setInterval(step, FRAME_MS);
+setInterval(save, SAVE_EVERY_MS);
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) save();
+  else step();
+});
+window.addEventListener("pagehide", save);
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+}
