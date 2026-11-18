@@ -28,6 +28,25 @@ export const CLASSES: readonly ClassDef[] = [
   { id: "warlock", name: "Warlock", role: "Sustain", hp: 85, atk: 12, def: 3, speed: 0.9, crit: 0.08, costBase: 200, unlockDepth: 20, skill: "drain", skillName: "Soul Drain", skillText: "Hits for 3x attack and heals the caster by that amount", skillCooldown: 11 },
 ];
 
+export type Trait = "armored" | "regen" | "enrage" | "summoner" | "thick";
+
+export const TRAITS: Record<Trait, { name: string; text: string }> = {
+  armored: { name: "Armored", text: "Triple defense. Fire and drain hurt less." },
+  regen: { name: "Regenerating", text: "Heals 2% of its health every second." },
+  enrage: { name: "Enraging", text: "Hits harder every 5 seconds." },
+  summoner: { name: "Summoner", text: "Calls a minion every 8 seconds." },
+  thick: { name: "Colossal", text: "Fifty percent more health." },
+};
+const BOSS_TRAITS: readonly Trait[] = ["armored", "regen", "enrage", "summoner", "thick"];
+
+export const ENRAGE_STEP_SECONDS = 5;
+export const ENRAGE_STEP_BONUS = 0.1;
+export const ENRAGE_MAX_STEPS = 20;
+export const REGEN_PER_SECOND = 0.02;
+export const SUMMON_SECONDS = 8;
+export const SUMMON_CAP = 4;
+export const SOFT_ENRAGE_AFTER_SECONDS = 60;
+
 export const WAVES_PER_DEPTH = 10;
 export const LEVEL_COST_GROWTH = 1.14;
 export const LEVEL_STAT_GROWTH = 1.075;
@@ -131,6 +150,10 @@ const BOSS_NAMES = ["Gravewarden", "The Pale Matron", "Lord Cinder", "Hollow Kin
 export function enemyName(depth: number, index: number): string {
   return ENEMY_NAMES[(depth + index) % ENEMY_NAMES.length] ?? "Skeleton";
 }
+export function bossTrait(depth: number): Trait {
+  return BOSS_TRAITS[Math.floor((depth - 1) / WAVES_PER_DEPTH) % BOSS_TRAITS.length] ?? "armored";
+}
+
 export function bossName(depth: number): string {
   return BOSS_NAMES[Math.floor((depth - 1) / WAVES_PER_DEPTH) % BOSS_NAMES.length] ?? "Gravewarden";
 }

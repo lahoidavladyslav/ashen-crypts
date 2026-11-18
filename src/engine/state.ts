@@ -1,4 +1,4 @@
-import { ASCENSION_START_GOLD, KEY_MAX, type ClassId, type Rarity, type Slot } from "./config";
+import { ASCENSION_START_GOLD, KEY_MAX, type ClassId, type Rarity, type Slot, type Trait } from "./config";
 
 export interface Item {
   id: number;
@@ -29,12 +29,18 @@ export interface Fighter {
   timer: number;
   skillCd: number;
   shieldUntil: number;
+  trait: Trait | null;
+  traitTimer: number;
+  summoned: boolean;
 }
 
 export interface Battle {
   kind: "stage" | "trial";
+  depth: number;
+  power: number;
   wave: number;
   clock: number;
+  waveTime: number;
   delay: number;
   heroes: Fighter[];
   enemies: Fighter[];

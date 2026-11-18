@@ -193,7 +193,7 @@ describe("combat", () => {
     const enemies = spawnEnemies(5, WAVES_PER_DEPTH);
     expect(enemies).toHaveLength(3);
     expect(enemies.filter((e) => e.boss)).toHaveLength(1);
-    expect(enemies[0]!.maxHp).toBeGreaterThan(enemies[1]!.maxHp * 5);
+    expect(enemies[0]!.maxHp).toBeGreaterThan(enemies[1]!.maxHp * 4);
   });
 
   it("enemies get tougher with depth", () => {

@@ -6,6 +6,7 @@ import {
   RARITIES,
   SLOTS,
   STREAK_REWARDS,
+  TRAITS,
   WAVES_PER_DEPTH,
   ENHANCE_MAX,
   type Slot,
@@ -58,6 +59,7 @@ function unit(fighter: Fighter, state: GameState, now: number): HTMLElement {
   const dead = fighter.hp <= 0;
   const element = h("div", { class: `unit ${fighter.side === "enemy" ? "enemy" : ""} ${fighter.boss ? "boss" : ""} ${dead ? "dead" : ""}` });
   element.append(h("div", { class: "name", text: fighter.name }));
+  if (fighter.trait) element.append(h("div", { class: "sub", text: TRAITS[fighter.trait].name }));
   element.append(h("div", { class: "sub", text: `${formatNumber(Math.max(0, fighter.hp))}` }));
   const hp = h("div", { class: "bar" }, h("div"));
   (hp.firstChild as HTMLElement).style.width = `${Math.max(0, (fighter.hp / fighter.maxHp) * 100)}%`;

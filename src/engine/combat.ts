@@ -1,12 +1,20 @@
 import {
   CRIT_MULTIPLIER,
+  ENRAGE_MAX_STEPS,
+  ENRAGE_STEP_BONUS,
+  ENRAGE_STEP_SECONDS,
   RALLY_COOLDOWN_SECONDS,
+  REGEN_PER_SECOND,
+  SOFT_ENRAGE_AFTER_SECONDS,
+  SUMMON_CAP,
+  SUMMON_SECONDS,
   RALLY_SECONDS,
   TICK_SECONDS,
   TRIAL_POWER,
   WAVES_PER_DEPTH,
   WAVE_DELAY_SECONDS,
   bossName,
+  bossTrait,
   enemyAtk,
   enemyDef,
   enemyGold,
@@ -16,6 +24,7 @@ import {
 import { dropChance, equipOrSalvage, rollItem } from "./loot";
 import { nextFloat } from "./rng";
 import { classOf, goldMultiplier, heroStats, rallyMultiplier } from "./stats";
+import type { Trait } from "./config";
 import type { Battle, Fighter, GameState } from "./state";
 
 export interface BattleHooks {
@@ -41,10 +50,21 @@ function fighterFromStats(state: GameState, index: number): Fighter {
     timer: 0,
     skillCd: hero ? classOf(hero.classId).skillCooldown * 0.5 : 10,
     shieldUntil: 0,
+    trait: null,
+    traitTimer: 0,
+    summoned: false,
   };
 }
 
-function enemy(name: string, hp: number, atk: number, def: number, boss: boolean): Fighter {
+function enemy(
+  name: string,
+  hp: number,
+  atk: number,
+  def: number,
+  boss: boolean,
+  trait: Trait | null = null,
+  summoned = false,
+): Fighter {
   return {
     name,
     side: "enemy",
@@ -59,7 +79,22 @@ function enemy(name: string, hp: number, atk: number, def: number, boss: boolean
     timer: 0,
     skillCd: 0,
     shieldUntil: 0,
+    trait,
+    traitTimer: 0,
+    summoned,
   };
+}
+
+function boss(depth: number, hp: number, atk: number, def: number): Fighter {
+  const trait = bossTrait(depth);
+  return enemy(
+    bossName(depth),
+    hp * 6 * (trait === "thick" ? 1.5 : 1),
+    atk * 1.6,
+    def * 1.5 * (trait === "armored" ? 2 : 1),
+    true,
+    trait,
+  );
 }
 
 export function spawnEnemies(depth: number, wave: number, power = 1): Fighter[] {
@@ -68,7 +103,7 @@ export function spawnEnemies(depth: number, wave: number, power = 1): Fighter[] 
   const def = enemyDef(depth);
   if (wave >= WAVES_PER_DEPTH) {
     return [
-      enemy(bossName(depth), hp * 8, atk * 1.6, def * 1.5, true),
+      boss(depth, hp, atk, def),
       enemy(enemyName(depth, 1), hp, atk, def, false),
       enemy(enemyName(depth, 2), hp, atk, def, false),
     ];
@@ -83,7 +118,9 @@ export function startBattle(state: GameState, kind: "stage" | "trial", wave = 1)
     kind === "trial"
       ? spawnEnemies(state.maxDepth, WAVES_PER_DEPTH, TRIAL_POWER)
       : spawnEnemies(state.depth, wave);
-  state.battle = { kind, wave, clock: 0, delay: 0, heroes, enemies };
+  const depth = kind === "trial" ? state.maxDepth : state.depth;
+  const power = kind === "trial" ? TRIAL_POWER : 1;
+  state.battle = { kind, depth, power, wave, clock: 0, waveTime: 0, delay: 0, heroes, enemies };
 }
 
 export function refreshHeroStats(state: GameState): void {
@@ -109,12 +146,26 @@ function alive(list: Fighter[]): Fighter[] {
 }
 
 function damage(state: GameState, from: Fighter, to: Fighter, multiplier: number, now: number, forceCrit = false): number {
-  let amount = from.atk * multiplier * (100 / (100 + to.def));
+  let amount = from.atk * enrageFactor(from) * multiplier * (100 / (100 + to.def));
+  if (from.side === "enemy") amount *= softEnrage(state.battle);
   if (forceCrit || nextFloat(state) < from.crit) amount *= CRIT_MULTIPLIER;
   if (from.side === "hero") amount *= rallyMultiplier(state, now);
   if (to.side === "hero" && to.shieldUntil > (state.battle?.clock ?? 0)) amount *= 0.5;
   to.hp = Math.max(0, to.hp - amount);
   return amount;
+}
+
+function enrageFactor(fighter: Fighter): number {
+  if (fighter.trait !== "enrage") return 1;
+  const steps = Math.min(ENRAGE_MAX_STEPS, Math.floor(fighter.traitTimer / ENRAGE_STEP_SECONDS));
+  return 1 + ENRAGE_STEP_BONUS * steps;
+}
+
+/** Long fights end: after a while every enemy hits harder and harder. */
+function softEnrage(battle: Battle | null): number {
+  const overtime = (battle?.waveTime ?? 0) - SOFT_ENRAGE_AFTER_SECONDS;
+  if (overtime <= 0) return 1;
+  return 1 + ENRAGE_STEP_BONUS * Math.min(ENRAGE_MAX_STEPS * 3, Math.floor(overtime / ENRAGE_STEP_SECONDS));
 }
 
 function heal(target: Fighter, amount: number): void {
@@ -197,9 +248,24 @@ function enemyAct(state: GameState, battle: Battle, foe: Fighter, now: number): 
   if (target) damage(state, foe, target, 1, now);
 }
 
+function runTraits(battle: Battle, dt: number): void {
+  for (const foe of alive(battle.enemies)) {
+    if (!foe.trait) continue;
+    foe.traitTimer += dt;
+    if (foe.trait === "regen") heal(foe, foe.maxHp * REGEN_PER_SECOND * dt);
+    if (foe.trait === "summoner" && foe.traitTimer >= SUMMON_SECONDS) {
+      foe.traitTimer -= SUMMON_SECONDS;
+      if (alive(battle.enemies).length < SUMMON_CAP) {
+        const minion = spawnEnemies(battle.depth, 1, battle.power)[0];
+        if (minion) battle.enemies.push({ ...minion, name: "Summoned Shade", summoned: true });
+      }
+    }
+  }
+}
+
 function rewardKill(state: GameState, foe: Fighter, kind: Battle["kind"], hooks: BattleHooks): void {
   hooks.onKill(state, foe.boss);
-  if (kind !== "stage") return;
+  if (kind !== "stage" || foe.summoned) return;
   const amount = enemyGold(state.depth) * (foe.boss ? 10 : 1) * goldMultiplier(state);
   hooks.onGold(state, amount);
   if (!foe.boss && nextFloat(state) < dropChance(state)) {
@@ -239,6 +305,8 @@ export function stepBattle(state: GameState, seconds: number, now: number, hooks
         fighter.skillCd = Math.max(0, fighter.skillCd - dt);
       }
     }
+    battle.waveTime += dt;
+    runTraits(battle, dt);
     for (const hero of alive(battle.heroes)) heroAct(state, battle, hero, now);
     for (const foe of alive(battle.enemies)) enemyAct(state, battle, foe, now);
 
@@ -257,6 +325,8 @@ export function stepBattle(state: GameState, seconds: number, now: number, hooks
       resetHeroes(state, battle);
       refreshHeroStats(state);
       battle.wave = 1;
+      battle.depth = state.depth;
+      battle.waveTime = 0;
       battle.enemies = spawnEnemies(state.depth, 1);
       battle.delay = 1.5;
       continue;
@@ -281,6 +351,8 @@ export function stepBattle(state: GameState, seconds: number, now: number, hooks
       } else {
         battle.wave += 1;
       }
+      battle.depth = state.depth;
+      battle.waveTime = 0;
       battle.enemies = spawnEnemies(state.depth, battle.wave);
     }
   }

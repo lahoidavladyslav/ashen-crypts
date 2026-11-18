@@ -44,6 +44,8 @@ export function play(options: Options): void {
   let now = START;
   let runStart = now;
   let threshold = options.ascendAtGain;
+  let bestInRun = 1;
+  let lastProgress = now;
   const marks = [5, 10, 15, 20, 25, 30, 40, 50, 60, 80];
   let next = 0;
   const log: string[] = [];
@@ -59,7 +61,12 @@ export function play(options: Options): void {
         next++;
       }
     }
-    if (ascensionGain(state) >= threshold) {
+    if (state.maxDepth > bestInRun) {
+      bestInRun = state.maxDepth;
+      lastProgress = now;
+    }
+    const stuck = now - lastProgress > 3 * 3600 * 1000 && ascensionGain(state) >= 1;
+    if (ascensionGain(state) >= threshold || stuck) {
       const depth = state.maxDepth;
       const gain = ascend(state);
       spendShards(state);
@@ -68,6 +75,8 @@ export function play(options: Options): void {
         `  ascension #${state.ascensions}: depth ${depth}, +${gain} shards after ${formatDuration((now - runStart) / 1000)}`,
       );
       runStart = now;
+      bestInRun = 1;
+      lastProgress = now;
     }
   }
   console.log(
